@@ -1,18 +1,15 @@
 /**
 * A widget that renders sub pages according to where it is rendered.
 */
-component extends="contentbox.model.ui.BaseWidget" singleton {
+component extends="contentbox.models.ui.BaseWidget" singleton {
 
-    function init( controller ){
-        // super init
-        super.init( controller );
-
+    function init(){
         // Widget Properties
-        setPluginName( "SubPageMenu" );
-        setPluginVersion( "1.0" );
-        setPluginDescription( "A widget that renders sub pages according to where it is rendered." );
-        setPluginAuthor( "Ortus Solutions" );
-        setPluginAuthorURL( "http://www.ortussolutions.com" );
+        setName( "SubPageMenu" );
+        setVersion( "1.0" );
+        setDescription( "A widget that renders sub pages according to where it is rendered." );
+        setAuthor( "Ortus Solutions" );
+        setAuthorURL( "http://www.ortussolutions.com" );
         setIcon( "list.png" );
         setCategory( "Content" );
         return this;
@@ -31,7 +28,7 @@ component extends="contentbox.model.ui.BaseWidget" singleton {
     * @activeShowChildren.hint If true, then we will show the children of the active menu element, else we just show the active element
     */
     any function renderIt(
-        string page
+        string page,
         string excludes,
         string type="ul",
         string separator="",

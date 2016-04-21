@@ -2,7 +2,7 @@
 ********************************************************************************
 ContentBox - A Modular Content Platform
 Copyright 2012 by Luis Majano and Ortus Solutions, Corp
-www.gocontentbox.org | www.luismajano.com | www.ortussolutions.com
+www.ortussolutions.com
 ********************************************************************************
 Apache License, Version 2.0
 
@@ -77,8 +77,6 @@ component implements="contentbox.model.updates.IUpdate"{
 			updateAdmin();
 			updateEditor();
 
-			// TODO: Add showInSearch bit
-
 			log.info("Finalized #version# patching");
 		}
 		catch(Any e){
@@ -94,11 +92,14 @@ component implements="contentbox.model.updates.IUpdate"{
 	*/
 	function postInstallation(){
 		try{
-			// Verify if less than 1.5.7 with message
+			// Verify if less than 1.6.0 with message
 			if( !isValidInstall() ){ return; }
 
 			// Make changes on disk take effect
 			ORMREload();
+
+			// Migrate Hits
+			migrateHits();
 
 		}
 		catch(Any e){
@@ -110,8 +111,28 @@ component implements="contentbox.model.updates.IUpdate"{
 
 	/************************************** PRIVATE *********************************************/
 
+	private function migrateHits(){
+		try{
+			var qContent 	= new Query( sql="select contentID, hits from cb_content" ).execute().getResult();
+			var hitsFound	= new Query( sql="SELECT count( hits ) AS count FROM cb_stats" ).execute().getResult().count;
+
+			// only migrate if no migration yet.
+			if( hitsFound eq 0 ){
+				for( var x=1; x lte qContent.recordcount; x++ ){
+					var q = new Query( sql="INSERT INTO cb_stats (hits,FK_contentID) VALUES (#qContent.hits[ x ]#, #qContent.contentID[ x ]#)" ).execute();
+				}
+				log.info( "Migrated hit counts to new table system" );
+			} else {
+				log.info( "No migration for hits counts needed" );
+			}
+
+		} catch (Any e ){
+			log.error( "Error migrating hit counts: #e.message# #e.detail#" );
+		}
+	}
+
 	private function isValidInstall(){
-		// Verify if less than 1.5.7 with message
+		// Verify if less than 1.6.0 with message
 		if( replace( currentVersion, ".", "", "all" )  LT 160 ){
 			log.info( "Cannot patch this installation until you upgrade to 1.6.0 first. You can find all of our patches here available for download: http://www.gocontentbox.org/download. Then apply this patch." );
 			return false;
@@ -125,7 +146,8 @@ component implements="contentbox.model.updates.IUpdate"{
 		var perms = [
 			"EDITORS_RELATED_CONTENT",
 			"EDITORS_LINKED_CONTENT",
-			"MENUS_ADMIN"
+			"MENUS_ADMIN",
+			"SYSTEM_AUTH_LOGS"
 		];
 
 		// iterate and add
@@ -179,7 +201,8 @@ component implements="contentbox.model.updates.IUpdate"{
 		var perms = {
 			"EDITORS_RELATED_CONTENT" = "Ability to view the related content panel",
 			"EDITORS_LINKED_CONTENT" = "Ability to view the linked content panel",
-			"MENUS_ADMIN" = "Ability to manage the menu builder"
+			"MENUS_ADMIN" = "Ability to manage the menu builder",
+			"SYSTEM_AUTH_LOGS"	= "Access to the system auth logs"
 		};
 
 		var allperms = [];
@@ -203,6 +226,28 @@ component implements="contentbox.model.updates.IUpdate"{
 		// Create New settings
 		addSetting( "cb_content_cachingHeader", "true" );
 		addSetting( "cb_site_poweredby", "true" );
+		// RSS New Feed Items
+		addSetting( "cb_rss_title" , "RSS Feed by ContentBox" );
+		addSetting( "cb_rss_generator" , "ContentBox by Ortus Solutions" );
+		addSetting( "cb_rss_copyright" , "Ortus Solutions, Corp (www.ortussolutions.com)" );
+		addSetting( "cb_rss_description" , "ContentBox RSS Feed" );
+		addSetting( "cb_rss_webmaster" , "" );
+		// Content Tracking
+		addSetting( "cb_content_hit_count", "true" );
+		addSetting( "cb_content_hit_ignore_bots", "false" );
+		addSetting( "cb_content_bot_regex", "Google|msnbot|Rambler|Yahoo|AbachoBOT|accoona|AcioRobot|ASPSeek|CocoCrawler|Dumbot|FAST-WebCrawler|GeonaBot|Gigabot|Lycos|MSRBOT|Scooter|AltaVista|IDBot|eStyle|Scrubby" );
+		// Security Settings
+		addSetting( "cb_security_login_blocker", "true" );
+		addSetting( "cb_security_max_attempts", "5" );
+		addSetting( "cb_security_blocktime", "5" );
+		addSetting( "cb_security_max_auth_logs", "500" );
+		addSetting( "cb_security_latest_logins", "10" );
+		// Rate Limiter
+		addSetting( "cb_security_rate_limiter", "true" );
+		addSetting( "cb_security_rate_limiter_count", "4" );
+		addSetting( "cb_security_rate_limiter_duration", "1" );
+		addSetting( "cb_security_rate_limiter_bots_only", "true" );
+		addSetting( "cb_security_rate_limiter_message", "<p>You are making too many requests too fast, please slow down and wait {duration} seconds</p>" );
 	}
 
 	/************************************** DB MIGRATION OPERATIONS *********************************************/
